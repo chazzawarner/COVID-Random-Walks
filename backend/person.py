@@ -27,9 +27,10 @@ class Worker(Person):
         self.step_length = step_length
         direction = np.random.uniform(-1, 1, 2)
         self.direction = direction / np.linalg.norm(direction)
+        self.previous_positions = [self.position.copy()]
         
     # Move the worker towards the patient
-    def update(self):
+    def update(self, bounds=None):
         # Call the parent class's update method
         super().update()
         
@@ -48,16 +49,24 @@ class Worker(Person):
             target_position = self.target.position
         
         # Move the worker
-        self.move(target_position)
+        self.move(target_position, bounds)
         
         
-    def move(self, target_position):
+    def move(self, target_position, bounds=None):
         # Calculate the direction to the patient
         direction_to_target = target_position - self.position
         
-        # Propose a new direction
+        # Propose a new direction that is would be within bounds, if provided
         proposed_direction = np.random.uniform(-1, 1, 2)
         proposed_direction = proposed_direction / np.linalg.norm(proposed_direction)
+        
+        if bounds is not None:
+            #print(f"Bounds provided: {bounds}")
+            while not self.check_bounds(self.position + self.step_length * proposed_direction, bounds):
+                #print("Proposed direction is out of bounds")
+                proposed_direction = np.random.uniform(-1, 1, 2)
+                proposed_direction = proposed_direction / np.linalg.norm(proposed_direction)
+        
         
         # Calculate angle between proposed direction and direction to patient
         angle = np.arccos(np.dot(direction_to_target, proposed_direction) / (np.linalg.norm(direction_to_target) * np.linalg.norm(proposed_direction)))
@@ -75,6 +84,14 @@ class Worker(Person):
         # Move the worker
         self.position += self.step_length * self.direction
         
+        # Add the new position to the list of previous positions
+        self.previous_positions.append(self.position.copy())
+        
+    # Check whether position is within bounds
+    def check_bounds(self, position, bounds):
+        return bounds[0][0] < position[0] < bounds[0][1] and bounds[1][0] < position[1] < bounds[1][1]
+        
+        
         
 # Define patient class (which inherits from Person)
 class Patient(Person):
@@ -87,7 +104,8 @@ class Patient(Person):
         
 def main():
     # Create a list of patients with random positions in a -10 to 10 square
-    patients = [Patient(np.random.rand(2) * 20 - 10) for i in range(10)]
+    bounds = np.array([[-10, 10], [-10, 10]])
+    patients = [Patient(np.random.rand(2) * 20 - 10) for _ in range(10)]
     
     # Create a worker
     worker = Worker(patients)
@@ -110,10 +128,13 @@ def main():
     
     # Add arrow for worker direction
     arrow = ax.arrow(worker.position[0], worker.position[1], worker.direction[0], worker.direction[1], width=0.1, color='black')
+
+    # Plot the worker's path
+    worker_path = ax.plot([p[0] for p in worker.previous_positions], [p[1] for p in worker.previous_positions], c='gray')
     
     def update(frame):
         nonlocal arrow
-        worker.update()
+        worker.update(bounds=bounds)
         sc2.set_offsets([worker.position])
         target.set_offsets([worker.target.position])
         
@@ -126,7 +147,10 @@ def main():
         # Create new arrow at updated position and direction
         arrow = ax.arrow(worker.position[0], worker.position[1], worker.direction[0], worker.direction[1], width=0.1, color='black')
         
-        return sc2, target, time_step_text, arrow
+        # Update worker path
+        worker_path[0].set_data([p[0] for p in worker.previous_positions], [p[1] for p in worker.previous_positions])
+        
+        return sc2, target, time_step_text, arrow, worker_path[0]
     
     ani = animation.FuncAnimation(fig, update, frames=num_frames, blit=True)
     
