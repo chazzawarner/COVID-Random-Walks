@@ -78,7 +78,11 @@ class Worker(Person):
         #print("")
         
         # Accept or reject the new direction
-        if np.random.rand() < acceptance_probability:
+        random_value = np.random.uniform(0, 1)
+        #print(f"Random Value: {random_value}")
+        #print(f"Acceptance Probability: {acceptance_probability}")
+        #print("")
+        if random_value < acceptance_probability:
             self.direction = proposed_direction
             
         # Move the worker
