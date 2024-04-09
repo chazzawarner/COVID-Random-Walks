@@ -4,18 +4,19 @@ import matplotlib.pyplot as plt
 # Define Ward class
 class Ward:
     def __init__(self, bays, beds, bay_length=20, bay_width=10, corridor_width=5):
-        self.bays = bays # Bays per side of the corridor
+        self.num_bays = bays # Bays per side of the corridor
         self.beds = beds # Number of beds per side of each bay
         self.bay_length = bay_length
         self.bay_width = bay_width
         self.corridor_width = corridor_width
-        self.corridor_length = self.bay_width * self.bays
+        self.corridor_length = self.bay_width * self.num_bays
         
         # Generate the positions of the beds
-        self.bay_objects = self.generate_bays()
-        print(self.bay_objects)
-        print(len(self.bay_objects))
-        self.bed_positions = [bed for bay in self.bay_objects for bed in bay["beds"]]
+        self.bays, self.bed_positions = self.generate_bays()
+        print(self.bed_positions)
+        
+        # Generate corridor
+        self.corridor = plt.Rectangle((-self.corridor_width/2, 0), self.corridor_width, self.corridor_length, linewidth=1, edgecolor='black', facecolor='white')
         
         self.render_ward()
         
@@ -27,22 +28,20 @@ class Ward:
         fig.patch.set_facecolor('lightgrey')
 
         # Plot the corridor walls, 
-        ax.add_patch(plt.Rectangle((-self.corridor_width/2, 0), self.corridor_width, self.corridor_length, linewidth=1, edgecolor='black', facecolor='white'))
+        ax.add_patch(self.corridor)
         
         # Plot the bays
-        for i in range(self.bays):
-            # Plot the bay walls
-            # Left bays
-            ax.add_patch(plt.Rectangle((-self.corridor_width/2 - self.bay_length, i * self.bay_width), self.bay_length, self.bay_width, linewidth=1, edgecolor='black', facecolor='white'))
-            ax.text(-self.corridor_width/2 - self.bay_length/2, i * self.bay_width + self.bay_width/2, f"Bay {2*i+1}", ha='center', va='center', fontstyle='italic', fontweight='bold', fontsize=15, alpha=0.3)
-            
-            # Right bays
-            ax.add_patch(plt.Rectangle((self.corridor_width/2, i * self.bay_width), self.bay_length, self.bay_width, linewidth=1, edgecolor='black', facecolor='white'))
-            ax.text(self.corridor_width/2 + self.bay_length/2, i * self.bay_width + self.bay_width/2, f"Bay {2*i+2}", ha='center', va='center', fontstyle='italic', fontweight='bold', fontsize=15, alpha=0.3)
-            
+        for i in range(len(self.bays)):
+            # Plot bays
+            ax.add_patch(self.bays[i])
+            text_position = (self.bays[i].get_x() + self.bays[i].get_width()/2, self.bays[i].get_y() + self.bays[i].get_height()/2)
+            ax.text(text_position[0], text_position[1], f"Bay {i+1}", ha='center', va='center', fontstyle='italic', fontweight='bold', fontsize=15, alpha=0.3)
+     
             # Plot doors
-            ax.add_patch(plt.Rectangle((-self.corridor_width/2 - self.corridor_width/6, i * self.bay_width + self.bay_width/3), self.corridor_width/3, self.bay_width/3, facecolor='white'))
-            ax.add_patch(plt.Rectangle((self.corridor_width/2 - self.corridor_width/6, i * self.bay_width + self.bay_width/3), self.corridor_width/3, self.bay_width/3, facecolor='white'))
+            if i % 2 == 0:
+                ax.add_patch(plt.Rectangle((self.bays[i].get_x() + self.bays[i].get_width() - self.corridor_width/6, self.bays[i].get_y() + self.bays[i].get_height()/3), self.corridor_width/3, self.bay_width/3, facecolor='white'))
+            else:
+                ax.add_patch(plt.Rectangle((self.bays[i].get_x() - self.corridor_width/6, self.bays[i].get_y() + self.bays[i].get_height()/3), self.corridor_width/3, self.bay_width/3, facecolor='white'))
         
         # Plot the beds
         bed_width = 1
@@ -94,30 +93,25 @@ class Ward:
     # Generate the positions of the bays
     def generate_bays(self):
         bays = []
-        for i in range(self.bays):
+        beds = []
+        for i in range(self.num_bays):
             # Left bay
             position = (-self.corridor_width/2 - self.bay_length, i * self.bay_width)
-            bays.append({
-                "position": position,
-                "beds": self.generate_beds(position),
-                "id": f"Bay {2*i+1}"
-            })
+            bays.append(plt.Rectangle(position, self.bay_length, self.bay_width, facecolor='white', edgecolor='black', linewidth=1))
+            beds.extend(self.generate_beds(position))
             
             # Right bay
             position = (self.corridor_width/2, i * self.bay_width)
-            bays.append({
-                "position": position,
-                "beds": self.generate_beds(position),
-                "id": f"Bay {2*i+2}"
-            })
+            bays.append(plt.Rectangle(position, self.bay_length, self.bay_width, facecolor='white', edgecolor='black', linewidth=1))
+            beds.extend(self.generate_beds(position))
             
             
-        return bays
+        return bays, beds
         
         
 def main():
     # Create a ward with 3 bays and 5 beds per bay
-    ward = Ward(bays=3, beds=3)
+    ward = Ward(bays=3, beds=4)
     
 if __name__ == "__main__":
     main()
