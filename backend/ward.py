@@ -13,20 +13,29 @@ class Ward:
         
         # Generate the positions of the beds
         self.bays, self.bed_positions = self.generate_bays()
-        print(self.bed_positions)
+        #print(self.bed_positions)
         
         # Generate corridor
         self.corridor = plt.Rectangle((-self.corridor_width/2, 0), self.corridor_width, self.corridor_length, linewidth=1, edgecolor='black', facecolor='white')
         
-        self.render_ward()
+        #self.render_ward()
+        
+        self.ward_graph = self.generate_ward_graph()
         
     def render_ward(self):
-        # Initialize the figure
+        # Initialise the figure
         fig, ax = plt.subplots()
 
         # Set the background color to grey
         fig.patch.set_facecolor('lightgrey')
-
+        
+        # Render the ward
+        self.render(ax, internal_render=True)
+        
+        plt.show()
+        
+        
+    def render(self, ax, internal_render=False):
         # Plot the corridor walls, 
         ax.add_patch(self.corridor)
         
@@ -50,21 +59,19 @@ class Ward:
             ax.add_patch(plt.Rectangle((bed[0] - bed_width/2, bed[1] - bed_length/2), bed_width, bed_length, facecolor='lightblue', edgecolor='black', linewidth=1))
             #ax.plot(bed[0], bed[1], 'bo')
             
-        
-        # Set the axis limits
-        padding = 1.1
-        """ax.set_xlim((-self.corridor_width/2 - self.bay_length) * padding, (self.corridor_width/2 + self.bay_length) * padding)
-        ax.set_ylim(-self.corridor_length * (padding - 1), self.corridor_length * padding)"""
-        ax.set_xlim(-self.corridor_width/2 - self.bay_length, self.corridor_width/2 + self.bay_length)
-        ax.set_ylim(0, self.corridor_length)
-        
-        # Set the aspect ratio to be equal
-        ax.set_aspect('equal')
-        
-        # Remove the axes
-        ax.axis('off')
-        
-        plt.show()
+        if internal_render:
+            # Set the axis limits
+            padding = 1.1
+            """ax.set_xlim((-self.corridor_width/2 - self.bay_length) * padding, (self.corridor_width/2 + self.bay_length) * padding)
+            ax.set_ylim(-self.corridor_length * (padding - 1), self.corridor_length * padding)"""
+            ax.set_xlim(-self.corridor_width/2 - self.bay_length, self.corridor_width/2 + self.bay_length)
+            ax.set_ylim(0, self.corridor_length)
+            
+            # Set the aspect ratio to be equal
+            ax.set_aspect('equal')
+            
+            # Remove the axes
+            ax.axis('off')
         
     # Generate the positions of the beds in a bay
     def generate_beds(self, bay_position):
@@ -107,11 +114,31 @@ class Ward:
             
             
         return bays, beds
+    
+    # Find the room (bay or corridor) that a position is in
+    def get_room(self, position):
+        # Convert position to display coordinates
+        ax = plt.gca()  # Get the current Axes instance
+        position_display = ax.transData.transform(position)
+
         
+        
+        for i in range(len(self.bays)):
+            if self.bays[i].contains_point(position_display):
+                return f"Bay {i+1}"
+        
+        if self.corridor.contains_point(position_display):
+            return "Corridor"
+    
+        return "Outside"
+        
+        
+    
         
 def main():
     # Create a ward with 3 bays and 5 beds per bay
     ward = Ward(bays=3, beds=4)
+    ward.render_ward()
     
 if __name__ == "__main__":
     main()

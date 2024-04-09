@@ -13,6 +13,9 @@ class Person:
     
     def update(self):
         pass
+    
+    def render(self, ax):
+        pass
         
 # Define healthcare worker class (which inherits from Person)
 class Worker(Person):
@@ -29,16 +32,19 @@ class Worker(Person):
         self.direction = direction / np.linalg.norm(direction)
         self.previous_positions = [self.position.copy()]
         
+    # Render the worker
+    def render(self, ax):
+        return ax.scatter(self.position[0], self.position[1], c='blue')
+        
     # Move the worker towards the patient
-    def update(self, bounds=None):
+    def update(self, ward):
         # Call the parent class's update method
         super().update()
         
-        # Get the current patient's position
         target_position = self.target.position
         
         # Check if the worker has reached the patient
-        if self.target.type == "patient" and np.linalg.norm(self.position - target_position) < self.step_length:
+        if self.target.type == "patient" and np.linalg.norm(self.position - self.target.position) < self.step_length:
             #print("Worker has reached the patient")
             
             # Roll the patient list
@@ -49,23 +55,21 @@ class Worker(Person):
             target_position = self.target.position
         
         # Move the worker
-        self.move(target_position, bounds)
+        self.move(target_position, ward)
         
         
-    def move(self, target_position, bounds=None):
+    def move(self, target_position, ward):
         # Calculate the direction to the patient
         direction_to_target = target_position - self.position
         
-        # Propose a new direction that is would be within bounds, if provided
-        proposed_direction = np.random.uniform(-1, 1, 2)
-        proposed_direction = proposed_direction / np.linalg.norm(proposed_direction)
-        
-        if bounds is not None:
-            #print(f"Bounds provided: {bounds}")
-            while not self.check_bounds(self.position + self.step_length * proposed_direction, bounds):
-                #print("Proposed direction is out of bounds")
-                proposed_direction = np.random.uniform(-1, 1, 2)
-                proposed_direction = proposed_direction / np.linalg.norm(proposed_direction)
+        # Propose a new direction that is within the ward and ensure the worker will make a valid move (if accepted)
+        while True:
+            proposed_direction = np.random.uniform(-1, 1, 2)
+            proposed_direction /= np.linalg.norm(proposed_direction)
+            new_position = self.position + self.step_length * proposed_direction
+
+            if self.check_move(self.position, new_position, ward):
+                break
         
         
         # Calculate angle between proposed direction and direction to patient
@@ -74,26 +78,49 @@ class Worker(Person):
         
         # Calculate acceptance probability
         acceptance_probability = (np.pi - angle) / (np.pi)
-        #print(f"Acceptance Probability: {acceptance_probability}")
-        #print("")
         
         # Accept or reject the new direction
         random_value = np.random.uniform(0, 1)
-        #print(f"Random Value: {random_value}")
-        #print(f"Acceptance Probability: {acceptance_probability}")
-        #print("")
         if random_value < acceptance_probability:
             self.direction = proposed_direction
             
-        # Move the worker
-        self.position += self.step_length * self.direction
+        # Move the worker if the new direction is valid
+        if self.check_move(self.position, self.position + self.step_length * self.direction, ward):
+            self.position += self.step_length * self.direction
+        #self.position += self.step_length * self.direction
         
         # Add the new position to the list of previous positions
         self.previous_positions.append(self.position.copy())
         
-    # Check whether position is within bounds
-    def check_bounds(self, position, bounds):
-        return bounds[0][0] < position[0] < bounds[0][1] and bounds[1][0] < position[1] < bounds[1][1]
+    # Check if the worker will make a valid move
+    def check_move(self, position, proposed_position, ward):
+        #print(f"Checking move from {position} to {proposed_position}")
+        current_room = ward.get_room(position)
+        proposed_room = ward.get_room(proposed_position)
+        
+        #print(f"Current Room: {current_room}")
+        #print(f"Proposed Room: {proposed_room}")
+        
+        # Check if the worker is moving inside the same room
+        if current_room == proposed_room:
+            #print("Worker is moving inside the same room")
+            return True
+        
+        # Check if the worker is moving outside
+        elif proposed_room == "Outside":
+            #print("Worker is trying to moving outside")
+            return False
+        
+        # Check if the worker is moving to a different bay (ie. through the walls)
+        elif "Bay" in current_room and "Bay" in proposed_room:
+            #print("Worker is trying to move through the walls")
+            return False
+        
+        # Else, the worker is moving between a bay and the corridor
+        else:
+            #print("Worker is moving between a bay and the corridor")
+            return True
+        
         
         
         
@@ -102,6 +129,10 @@ class Patient(Person):
     def __init__(self, position=np.array([0.0,0.0])):
         super().__init__(position)
         self.type = "patient"
+    
+    # Render the patient
+    def render(self, ax):
+        ax.plot(self.position[0], self.position[1], 'ro')
         
         
         
