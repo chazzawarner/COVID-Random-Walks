@@ -20,7 +20,7 @@ class Ward:
         
         #self.render_ward()
         
-        self.ward_graph = self.generate_ward_graph()
+        self.ward_spine = self.create_spine()
         
     def render_ward(self):
         # Initialise the figure
@@ -60,6 +60,9 @@ class Ward:
             #ax.plot(bed[0], bed[1], 'bo')
             
         if internal_render:
+            # Plot the spine
+            ax.scatter(self.ward_spine[:,0], self.ward_spine[:,1], c='black', zorder=10)
+            
             # Set the axis limits
             padding = 1.1
             """ax.set_xlim((-self.corridor_width/2 - self.bay_length) * padding, (self.corridor_width/2 + self.bay_length) * padding)
@@ -120,8 +123,6 @@ class Ward:
         # Convert position to display coordinates
         ax = plt.gca()  # Get the current Axes instance
         position_display = ax.transData.transform(position)
-
-        
         
         for i in range(len(self.bays)):
             if self.bays[i].contains_point(position_display):
@@ -132,8 +133,14 @@ class Ward:
     
         return "Outside"
         
+    # Create the spine points of the ward
+    def create_spine(self):
+        # Distribute the spine points along the y-axis
+        spine_y = np.linspace(self.bay_width/2, self.corridor_length - self.bay_width/2, self.num_bays)
         
-    
+        # Create the spine points
+        spine = [(0, y) for y in spine_y]
+        return np.array(spine)
         
 def main():
     # Create a ward with 3 bays and 5 beds per bay

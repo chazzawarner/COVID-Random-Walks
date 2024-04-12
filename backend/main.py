@@ -15,7 +15,7 @@ def main():
         patients.append(patient)
     
     # Create a worker
-    worker = Worker(patients, position=np.array([0.0,5.0]), step_length=0.5)
+    worker = Worker(patients, ward, position=np.array([0.0,5.0]), step_length=0.5)
     
     """# Render the ward and people
     fig, ax = plt.subplots()

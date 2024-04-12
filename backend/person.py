@@ -19,18 +19,20 @@ class Person:
         
 # Define healthcare worker class (which inherits from Person)
 class Worker(Person):
-    def __init__(self, patient_list, position=np.array([0.0,0.0]), step_length=0.1):
+    def __init__(self, patient_list, ward, position=np.array([0.0,0.0]), step_length=0.1):
         super().__init__(position)
         self.type = "worker"
         self.patient_list = patient_list
         shuffle(self.patient_list)
-        #print(self.patient_list)
-        #print(f"Patient List: {[p.position for p in self.patient_list]}")
-        self.target = self.patient_list[0]
         self.step_length = step_length
         direction = np.random.uniform(-1, 1, 2)
         self.direction = direction / np.linalg.norm(direction)
         self.previous_positions = [self.position.copy()]
+        
+        # Set the target patient and path
+        self.target_patient = self.patient_list[0]
+        self.path = self.get_path(self.position, self.target_patient, ward)
+        self.target = self.path[0]
         
     # Render the worker
     def render(self, ax):
@@ -51,13 +53,23 @@ class Worker(Person):
             self.patient_list = np.roll(self.patient_list, 1)
             
             # Set the new target
-            self.target = self.patient_list[0]
+            self.target_patient = self.patient_list[0]
+            self.path = self.get_path(self.position, self.target_patient, ward)
+            self.target = self.path[0]
+            target_position = self.target.position
+        
+        # Check if the worker has reached a point on its path
+        elif self.target.type == "path" and np.linalg.norm(self.position - self.target.position) < self.step_length:
+            #print("Worker has reached a point on its path")
+            
+            # Set the new target
+            self.target = self.path[self.path.index(self.target) + 1]
             target_position = self.target.position
         
         # Move the worker
         self.move(target_position, ward)
         
-        
+    # Try to move the worker in the direction of the target
     def move(self, target_position, ward):
         # Calculate the direction to the patient
         direction_to_target = target_position - self.position
@@ -71,6 +83,8 @@ class Worker(Person):
             if self.check_move(self.position, new_position, ward):
                 break
         
+        
+        ### MAKE IT SO THE WORKER CAN ONLY MOVE WITHIN ITS CURRENT ROOM AND INTO THE NEXT
         
         # Calculate angle between proposed direction and direction to patient
         angle = np.arccos(np.dot(direction_to_target, proposed_direction) / (np.linalg.norm(direction_to_target) * np.linalg.norm(proposed_direction)))
@@ -120,6 +134,69 @@ class Worker(Person):
         else:
             #print("Worker is moving between a bay and the corridor")
             return True
+        
+    # Get the path to the next patient
+    def get_path(self, position, target_patient, ward):
+        path = []
+        
+        # Get the worker's bay and the target patient's bay
+        worker_bay = ward.get_room(position)
+        print(f"Position: {position}")
+        print(f"Worker Bay: {worker_bay}")
+        if worker_bay != "Corridor":
+            worker_bay = int(worker_bay.split(" ")[1])
+            patient_bay = ward.get_room(target_patient.position)
+            patient_bay = int(patient_bay.split(" ")[1])
+        """else:
+            worker_bay = 'Corridor'"""
+        
+        # Check if the worker is in the same room as the target patient
+        if ward.get_room(position) == ward.get_room(target_patient.position):
+            path.append(target_patient)
+            return path
+        
+        # Get spine points of the ward
+        spine_points = ward.spine_points
+        
+        if not worker_bay == "Corridor":
+            # Find the spine point for the worker's current bay
+            if worker_bay % 2 == 0:
+                worker_spine = spine_points[worker_bay // 2]
+            else:
+                worker_spine = spine_points[worker_bay // 2 + 1]
+            
+            # Find the spine point for the target patient's bay
+            if worker_bay % 2 == 0:
+                patient_spine = spine_points[patient_bay // 2]
+            else:
+                patient_spine = spine_points[patient_bay // 2 + 1]
+            
+            # If the worker's bay and the target's bay are directly opposite each other
+            if worker_spine == patient_spine:
+                path.append(target_patient)
+                return path
+            
+            # Else, the worker must move through the spine points
+            path.append({
+                "position": worker_spine,
+                "type": "path"
+            })
+            path.append({
+                "position": patient_spine,
+                "type": "path"
+            })
+            path.append(target_patient)
+        
+        # Else, the worker is in the corridor
+        else:
+            path.append({
+                "position": patient_spine,
+                "type": "path"
+            })
+            path.append(target_patient)
+            
+        
+        return path
         
         
         
