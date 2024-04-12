@@ -12,11 +12,17 @@ class Ward:
         self.corridor_length = self.bay_width * self.num_bays
         
         # Generate the positions of the beds
-        self.bays, self.bed_positions = self.generate_bays()
+        self.bays, self.bed_positions, self.bay_positions = self.generate_bays()
         #print(self.bed_positions)
         
         # Generate corridor
         self.corridor = plt.Rectangle((-self.corridor_width/2, 0), self.corridor_width, self.corridor_length, linewidth=1, edgecolor='black', facecolor='white')
+        self.corridor_position = (
+            (-self.corridor_width/2, 0),
+            (self.corridor_width/2, 0),
+            (self.corridor_width/2, self.corridor_length),
+            (-self.corridor_width/2, self.corridor_length)
+        )
         
         #self.render_ward()
         
@@ -104,33 +110,48 @@ class Ward:
     def generate_bays(self):
         bays = []
         beds = []
+        bay_positions = []
         for i in range(self.num_bays):
             # Left bay
             position = (-self.corridor_width/2 - self.bay_length, i * self.bay_width)
             bays.append(plt.Rectangle(position, self.bay_length, self.bay_width, facecolor='white', edgecolor='black', linewidth=1))
             beds.extend(self.generate_beds(position))
             
+            ## Add the bay position, counter-clockwise from the bottom left
+            bay_positions.append([
+                (position[0], position[1]),
+                (position[0] + self.bay_length, position[1]),
+                (position[0] + self.bay_length, position[1] + self.bay_width),
+                (position[0], position[1] + self.bay_width)
+            ])
+            
             # Right bay
             position = (self.corridor_width/2, i * self.bay_width)
             bays.append(plt.Rectangle(position, self.bay_length, self.bay_width, facecolor='white', edgecolor='black', linewidth=1))
             beds.extend(self.generate_beds(position))
             
+            ## Add the bay position (as above)
+            bay_positions.append([
+                (position[0], position[1]),
+                (position[0] + self.bay_length, position[1]),
+                (position[0] + self.bay_length, position[1] + self.bay_width),
+                (position[0], position[1] + self.bay_width)
+            ])
             
-        return bays, beds
+        return bays, beds, bay_positions
     
     # Find the room (bay or corridor) that a position is in
     def get_room(self, position):
-        # Convert position to display coordinates
-        ax = plt.gca()  # Get the current Axes instance
-        position_display = ax.transData.transform(position)
         
-        for i in range(len(self.bays)):
-            if self.bays[i].contains_point(position_display):
+        # Check if the position is in a bay
+        for i in range(len(self.bay_positions)):
+            if position[0] >= self.bay_positions[i][0][0] and position[0] <= self.bay_positions[i][1][0] and position[1] >= self.bay_positions[i][0][1] and position[1] <= self.bay_positions[i][2][1]:
                 return f"Bay {i+1}"
-        
-        if self.corridor.contains_point(position_display):
+            
+        # Check if the position is in the corridor
+        if position[0] >= self.corridor_position[0][0] and position[0] <= self.corridor_position[1][0] and position[1] >= self.corridor_position[0][1] and position[1] <= self.corridor_position[2][1]:
             return "Corridor"
-    
+        
         return "Outside"
         
     # Create the spine points of the ward

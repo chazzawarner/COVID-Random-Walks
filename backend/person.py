@@ -139,16 +139,14 @@ class Worker(Person):
     def get_path(self, position, target_patient, ward):
         path = []
         
-        # Get the worker's bay and the target patient's bay
+        # Get the worker's bay
         worker_bay = ward.get_room(position)
-        print(f"Position: {position}")
-        print(f"Worker Bay: {worker_bay}")
         if worker_bay != "Corridor":
             worker_bay = int(worker_bay.split(" ")[1])
-            patient_bay = ward.get_room(target_patient.position)
-            patient_bay = int(patient_bay.split(" ")[1])
-        """else:
-            worker_bay = 'Corridor'"""
+            
+        # Get the target patient's bay
+        patient_bay = ward.get_room(target_patient.position)
+        patient_bay = int(patient_bay.split(" ")[1])
         
         # Check if the worker is in the same room as the target patient
         if ward.get_room(position) == ward.get_room(target_patient.position):
@@ -156,45 +154,36 @@ class Worker(Person):
             return path
         
         # Get spine points of the ward
-        spine_points = ward.spine_points
+        spine_points = ward.ward_spine
         
+        # Find the spine point for the target patient's bay
+        if patient_bay % 2 == 0:
+            patient_spine = spine_points[patient_bay // 2 - 1]
+        else:
+            patient_spine = spine_points[patient_bay // 2]
+        
+        # If the worker is not in the corridor, find the bay
         if not worker_bay == "Corridor":
             # Find the spine point for the worker's current bay
             if worker_bay % 2 == 0:
+                worker_spine = spine_points[worker_bay // 2 - 1]
+            else:
                 worker_spine = spine_points[worker_bay // 2]
-            else:
-                worker_spine = spine_points[worker_bay // 2 + 1]
-            
-            # Find the spine point for the target patient's bay
-            if worker_bay % 2 == 0:
-                patient_spine = spine_points[patient_bay // 2]
-            else:
-                patient_spine = spine_points[patient_bay // 2 + 1]
             
             # If the worker's bay and the target's bay are directly opposite each other
-            if worker_spine == patient_spine:
+            #if worker_spine == patient_spine:
+            if worker_bay // 2 == patient_bay // 2 - 1 or worker_bay // 2 - 1 == patient_bay // 2:
                 path.append(target_patient)
                 return path
             
             # Else, the worker must move through the spine points
-            path.append({
-                "position": worker_spine,
-                "type": "path"
-            })
-            path.append({
-                "position": patient_spine,
-                "type": "path"
-            })
-            path.append(target_patient)
+            path.append(Path(worker_spine))
         
-        # Else, the worker is in the corridor
-        else:
-            path.append({
-                "position": patient_spine,
-                "type": "path"
-            })
-            path.append(target_patient)
+        # Add the target patient's spine point and position to the path
+        path.append(Path(patient_spine))
+        path.append(target_patient)
             
+        print(f"Path: {path}")
         
         return path
         
@@ -211,7 +200,10 @@ class Patient(Person):
     def render(self, ax):
         ax.plot(self.position[0], self.position[1], 'ro')
         
-        
+class Path:
+    def __init__(self, position, type="path"):
+        self.position = position
+        self.type = type
         
         
 def main():
