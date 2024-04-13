@@ -31,8 +31,10 @@ class Worker(Person):
         
         # Set the target patient and path
         self.target_patient = self.patient_list[0]
-        self.path = self.get_path(self.position, self.target_patient, ward)
-        self.target = self.path[0]
+        self.path = self.get_path(self.position, self.target_patient, ward) # A list of targets
+        
+        # Find the first target on the path where type is not "room"
+        self.target = [p for p in self.path if p.type != "room"][0]
         
     # Render the worker
     def render(self, ax):
@@ -55,7 +57,7 @@ class Worker(Person):
             # Set the new target
             self.target_patient = self.patient_list[0]
             self.path = self.get_path(self.position, self.target_patient, ward)
-            self.target = self.path[0]
+            self.target = [p for p in self.path if p.type != "room"][0]
             target_position = self.target.position
         
         # Check if the worker has reached a point on its path
@@ -63,7 +65,7 @@ class Worker(Person):
             #print("Worker has reached a point on its path")
             
             # Set the new target
-            self.target = self.path[self.path.index(self.target) + 1]
+            self.target = [p for p in self.path[self.path.index(self.target) + 1:] if p.type != "room"][0]
             target_position = self.target.position
         
         # Move the worker
@@ -83,9 +85,6 @@ class Worker(Person):
             if self.check_move(self.position, new_position, ward):
                 break
         
-        
-        ### MAKE IT SO THE WORKER CAN ONLY MOVE WITHIN ITS CURRENT ROOM AND INTO THE NEXT
-        
         # Calculate angle between proposed direction and direction to patient
         angle = np.arccos(np.dot(direction_to_target, proposed_direction) / (np.linalg.norm(direction_to_target) * np.linalg.norm(proposed_direction)))
         #print(f"Angle: {angle} radians")
@@ -100,7 +99,27 @@ class Worker(Person):
             
         # Move the worker if the new direction is valid
         if self.check_move(self.position, self.position + self.step_length * self.direction, ward):
+            
+            # Update the worker's position
+            previous_position = self.position.copy()
             self.position += self.step_length * self.direction
+            
+            # If the worker has accidentally moved into its next room but hasn't fulfilled the path, update the target to be the one of the current room or next available target
+            current_room = ward.get_room(self.position)
+            previous_room = ward.get_room(previous_position)
+            
+            # Check if the worker has moved into a new room
+            if current_room != previous_room:
+                # Get the list of paths that have target positions
+                path_targets = [p for p in self.path if p.type != "room"]
+                if self.target.room != current_room and self.target.room == previous_room:
+                    # Move onto the next target (where it is not of type "room")
+                    self.target = [p for p in self.path[self.path.index(self.target) + 1:] if p.type != "room"][0]
+                    
+            
+                
+            
+                
         #self.position += self.step_length * self.direction
         
         # Add the new position to the list of previous positions
@@ -112,28 +131,29 @@ class Worker(Person):
         current_room = ward.get_room(position)
         proposed_room = ward.get_room(proposed_position)
         
+        
         #print(f"Current Room: {current_room}")
         #print(f"Proposed Room: {proposed_room}")
         
         # Check if the worker is moving inside the same room
         if current_room == proposed_room:
-            #print("Worker is moving inside the same room")
+            #print(f"Worker is moving inside {current_room} - accepting move")
             return True
         
-        # Check if the worker is moving outside
-        elif proposed_room == "Outside":
-            #print("Worker is trying to moving outside")
-            return False
+        # Get worker's path rooms
+        path_rooms = [p.room for p in self.path]
         
-        # Check if the worker is moving to a different bay (ie. through the walls)
-        elif "Bay" in current_room and "Bay" in proposed_room:
-            #print("Worker is trying to move through the walls")
-            return False
+        # Get the current and next room (if it exists)
+        #current_room_index = path_rooms.index(current_room)
+        current_room_index = len(path_rooms) - 1 - path_rooms[::-1].index(current_room) # Find the last index of the current room by reversing the list
+        possible_rooms = path_rooms[current_room_index:current_room_index + 2]
+        #print(f"Possible rooms: {possible_rooms}")
         
-        # Else, the worker is moving between a bay and the corridor
-        else:
-            #print("Worker is moving between a bay and the corridor")
+        # Check if the worker is moving into one of those rooms
+        if proposed_room in possible_rooms:
+            #print(f"Worker is moving into {proposed_room} - accepting move")
             return True
+        
         
     # Get the path to the next patient
     def get_path(self, position, target_patient, ward):
@@ -150,40 +170,47 @@ class Worker(Person):
         
         # Check if the worker is in the same room as the target patient
         if ward.get_room(position) == ward.get_room(target_patient.position):
-            path.append(target_patient)
+            path.append(Path(target_patient.position, ward.get_room(target_patient.position), type="patient"))
             return path
+        
+        
+        # If not, find the path to the target patient
         
         # Get spine points of the ward
         spine_points = ward.ward_spine
         
+        # Add the worker's current room to the path
+        path.append(Path(None, ward.get_room(position), type="room"))
+        
         # Find the spine point for the target patient's bay
-        if patient_bay % 2 == 0:
-            patient_spine = spine_points[patient_bay // 2 - 1]
-        else:
-            patient_spine = spine_points[patient_bay // 2]
+        patient_spine = spine_points[(patient_bay - 1) // 2]
         
         # If the worker is not in the corridor, find the bay
         if not worker_bay == "Corridor":
             # Find the spine point for the worker's current bay
-            if worker_bay % 2 == 0:
-                worker_spine = spine_points[worker_bay // 2 - 1]
-            else:
+            """if worker_bay % 2 == 0:
                 worker_spine = spine_points[worker_bay // 2]
+            else:
+                worker_spine = spine_points[worker_bay // 2 + 1]"""
+            worker_spine = spine_points[(worker_bay - 1) // 2]
             
             # If the worker's bay and the target's bay are directly opposite each other
             #if worker_spine == patient_spine:
-            if worker_bay // 2 == patient_bay // 2 - 1 or worker_bay // 2 - 1 == patient_bay // 2:
-                path.append(target_patient)
+            if worker_spine[0] == patient_spine[0] and worker_spine[1] == patient_spine[1]:
+                #print("Worker and patient are directly opposite each other")
+                path.append(Path(None, "Corridor", type="room"))
+                path.append(Path(target_patient.position, ward.get_room(target_patient.position), type="patient"))
                 return path
             
             # Else, the worker must move through the spine points
-            path.append(Path(worker_spine))
+            path.append(Path(worker_spine, "Corridor", type="path"))
         
         # Add the target patient's spine point and position to the path
-        path.append(Path(patient_spine))
-        path.append(target_patient)
+        path.append(Path(patient_spine, "Corridor", type="path"))
+        path.append(Path(target_patient.position, ward.get_room(target_patient.position), type="patient"))
             
-        print(f"Path: {path}")
+        #print(f"Path: {path}")
+        #print(f"Path rooms: {[p.room for p in path]}")
         
         return path
         
@@ -201,8 +228,9 @@ class Patient(Person):
         ax.plot(self.position[0], self.position[1], 'ro')
         
 class Path:
-    def __init__(self, position, type="path"):
+    def __init__(self, position, room, type="path"):
         self.position = position
+        self.room = room
         self.type = type
         
         
