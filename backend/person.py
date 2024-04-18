@@ -2,25 +2,67 @@ import numpy as np
 from numpy.random import shuffle
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.patches import Circle
 
 # Define the Person class
 class Person:
-    def __init__(self, position=np.array([0.0,0.0]), infected=False, masked=False, vaccinated=True):
+    def __init__(self, position=np.array([0.0,0.0]), infected=False, masked=False, vaccinated=False, masked_airborne_reduction_spread=0.5, masked_airborne_reduction_particles=0.5):
         self.position = position
         self.infected = infected
         self.masked = masked
+        self.mask_efficiency = 0.6 if self.masked else 1.0
         self.vaccinated = vaccinated
+        self.vaccine_efficiency = 0.8 if self.vaccinated else 1.0
+        self.innate_immunity = 0.55
+        
+        # Set the infection probability: innate_immunity * mask_efficiency * vaccine_efficiency
+        self.infection_probability = self.innate_immunity * self.mask_efficiency * self.vaccine_efficiency
+        
+        self.masked_airborne_reduction_spread = masked_airborne_reduction_spread
+        self.masked_airborne_reduction_particles = masked_airborne_reduction_particles
     
-    def update(self):
-        pass
+    def update(self, frame, airborne_particles, surface_particles, ward):
+        # Check if the person has been infected, if so create new particles
+        if self.infected:
+            # Masks reduce the spread and number of airborne particles plus eliminates surface particles
+            if self.masked:
+                airborne_particles.create_particles(frame, self.position, masked_reduction_spread=self.masked_airborne_reduction_spread, masked_reduction_particles=self.masked_airborne_reduction_particles)
+            
+            # Non-masked individuals create the normal number of particles
+            else:
+                airborne_particles.create_particles(frame, self.position)
+                surface_particles.create_particles(frame, self.position)
+            
+        # Check for particle collisions if the person is not infected
+        else:
+            # Get the number of particles that have collided with the person, 0.2 is the radius of the person's head
+            airborne_particle_collisions = airborne_particles.check_for_particles(self.position, 0.2)
+            surface_particle_collisions = surface_particles.check_for_particles(self.position, 0.2)
+            total_collisions = len(airborne_particle_collisions) + len(surface_particle_collisions)
+            
+            # If there are collisions, check if the person has been infected
+            if total_collisions > 0:
+                # Calculate acceptance probability
+                acceptance_probability = 1 - (1 - self.infection_probability) ** total_collisions
+                
+                # Accept or reject the infection
+                random_value = np.random.uniform(0, 1)
+                if random_value < acceptance_probability:
+                    self.infected = True
+                    print(f"Person has been infected with probability {acceptance_probability} and {total_collisions} collisions")
+                    
+                
+            
+            
+        
     
     def render(self, ax):
         pass
         
 # Define healthcare worker class (which inherits from Person)
 class Worker(Person):
-    def __init__(self, patient_list, ward, position=np.array([0.0,0.0]), step_length=0.1):
-        super().__init__(position)
+    def __init__(self, patient_list, ward, position=np.array([0.0,0.0]), step_length=0.1, masked_airborne_reduction_spread=0.5, masked_airborne_reduction_particles=0.5):
+        super().__init__(position, masked_airborne_reduction_spread=masked_airborne_reduction_spread, masked_airborne_reduction_particles=masked_airborne_reduction_particles)
         self.type = "worker"
         self.patient_list = patient_list
         shuffle(self.patient_list)
@@ -36,14 +78,17 @@ class Worker(Person):
         # Find the first target on the path where type is not "room"
         self.target = [p for p in self.path if p.type != "room"][0]
         
-    # Render the worker
     def render(self, ax):
-        return ax.scatter(self.position[0], self.position[1], c='blue')
+        facecolor = 'lightblue'
+        edgecolor = 'blue' if self.masked else facecolor
+        hatch = '+++' if self.vaccinated else None
+        circle = Circle((self.position[0], self.position[1]), 0.5, facecolor=facecolor, edgecolor=edgecolor, hatch=hatch, zorder=10)
+        return ax.add_patch(circle)
         
     # Move the worker towards the patient
-    def update(self, ward):
+    def update(self, frame, airborne_particles, surface_particles, ward):
         # Call the parent class's update method
-        super().update()
+        super().update(frame, airborne_particles, surface_particles, ward)
         
         target_position = self.target.position
         
@@ -115,10 +160,6 @@ class Worker(Person):
                 if self.target.room != current_room and self.target.room == previous_room:
                     # Move onto the next target (where it is not of type "room")
                     self.target = [p for p in self.path[self.path.index(self.target) + 1:] if p.type != "room"][0]
-                    
-            
-                
-            
                 
         #self.position += self.step_length * self.direction
         
@@ -219,13 +260,21 @@ class Worker(Person):
         
 # Define patient class (which inherits from Person)
 class Patient(Person):
-    def __init__(self, position=np.array([0.0,0.0])):
-        super().__init__(position)
+    def __init__(self, position=np.array([0.0,0.0]), masked_airborne_reduction_spread=0.5, masked_airborne_reduction_particles=0.5):
+        super().__init__(position, masked_airborne_reduction_spread=masked_airborne_reduction_spread, masked_airborne_reduction_particles=masked_airborne_reduction_particles)
         self.type = "patient"
+    
+    def update(self, frame, airborne_particles, surface_particles, ward):
+        super().update(frame, airborne_particles, surface_particles, ward)
     
     # Render the patient
     def render(self, ax):
-        ax.plot(self.position[0], self.position[1], 'ro')
+        facecolor = 'lightcoral'
+        edgecolor = 'green' if self.vaccinated else facecolor
+        if self.vaccinated:
+            print(f"Patient vaccinated: {self.vaccinated}")
+        circle = Circle((self.position[0], self.position[1]), 0.5, facecolor=facecolor, edgecolor=edgecolor, zorder=8)
+        ax.add_patch(circle)
         
 class Path:
     def __init__(self, position, room, type="path"):

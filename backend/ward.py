@@ -62,7 +62,7 @@ class Ward:
         bed_width = 1
         bed_length = 2
         for bed in self.bed_positions:
-            ax.add_patch(plt.Rectangle((bed[0] - bed_width/2, bed[1] - bed_length/2), bed_width, bed_length, facecolor='lightblue', edgecolor='black', linewidth=1))
+            ax.add_patch(plt.Rectangle((bed[0] - bed_width/2, bed[1] - bed_length/2), bed_width, bed_length, facecolor='lightblue', edgecolor='black', linewidth=1, zorder=5))
             #ax.plot(bed[0], bed[1], 'bo')
             
         if internal_render:
