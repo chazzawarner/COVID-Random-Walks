@@ -272,7 +272,7 @@ class Patient(Person):
         edgecolor = 'green' if self.vaccinated else facecolor
         if self.vaccinated:
             print(f"Patient vaccinated: {self.vaccinated}")
-        circle = Circle((self.position[0], self.position[1]), 0.5, facecolor=facecolor, edgecolor=edgecolor, zorder=8)
+        circle = Circle((self.position[0], self.position[1]), 0.5, facecolor=facecolor, edgecolor=edgecolor, zorder=9)
         ax.add_patch(circle)
         
 class Path:

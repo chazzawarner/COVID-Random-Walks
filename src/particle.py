@@ -54,14 +54,14 @@ class ParticleManager:
     # Update the particles, checking for decay
     def update(self, timestep):
         # Pop particles that have decayed
-        if len(self.particles.queue) > 0:
-            while self.particles.queue[0][1] <= timestep:
+        if len(self.particles.items) > 0:
+            while self.particles.priorities[0] <= timestep:
                 self.particles.pop()
             
     # Render the particles
     def render(self, ax, color='red'):
         # Get the positions of the particles
-        particle_positions = [p[0].position for p in self.particles.queue]
+        particle_positions = [p.position for p in self.particles.items]
         
         # Plot the particles
         return ax.scatter([p[0] for p in particle_positions], [p[1] for p in particle_positions], c=color, alpha=0.5, s=0.5, zorder=7)
@@ -71,8 +71,7 @@ class ParticleManager:
     def check_for_particles(self, position, radius):
         # Get the particles in the room
         position_room = self.get_room(position)
-        room_particles = [p for p in self.particles.queue if p[0].room == position_room]
-        room_particles = [p[0].position for p in room_particles]
+        room_particles = [p.position for p in self.particles.items if p.room == position_room]
         
         # Reject particles outside radius on x-axis
         min_x = position[0] - radius
@@ -129,7 +128,7 @@ class PriorityQueue:
         
     
     
-def main():
+def main(): # Currently does not work
     # Create some particles
     origin = np.array([0.0, 0.0])
     spread = 1
