@@ -6,7 +6,7 @@ from matplotlib.patches import Circle
 
 # Define the Person class
 class Person:
-    def __init__(self, position=np.array([0.0,0.0]), infected=False, masked=False, vaccinated=False, masked_airborne_reduction_spread=0.5, masked_airborne_reduction_particles=0.5):
+    def __init__(self, position=np.array([0.0,0.0]), infected=False, masked=False, vaccinated=False):
         self.position = position
         self.infected = infected
         self.masked = masked
@@ -18,15 +18,15 @@ class Person:
         # Set the infection probability: innate_immunity * mask_efficiency * vaccine_efficiency
         self.infection_probability = self.innate_immunity * self.mask_efficiency * self.vaccine_efficiency
         
-        self.masked_airborne_reduction_spread = masked_airborne_reduction_spread
-        self.masked_airborne_reduction_particles = masked_airborne_reduction_particles
+        self.masked_airborne_reduction_spread = 0.25
+        self.masked_airborne_reduction_particles = (1 - 0.6)
     
     def update(self, frame, airborne_particles, surface_particles, ward):
         # Check if the person has been infected, if so create new particles
         if self.infected:
             # Masks reduce the spread and number of airborne particles plus eliminates surface particles
             if self.masked:
-                airborne_particles.create_particles(frame, self.position, masked_reduction_spread=self.masked_airborne_reduction_spread, masked_reduction_particles=self.masked_airborne_reduction_particles)
+                airborne_particles.create_particles(frame, self.position, masked_reduction_particles=self.masked_airborne_reduction_particles, masked_reduction_spread=self.masked_airborne_reduction_spread)
             
             # Non-masked individuals create the normal number of particles
             else:
@@ -49,7 +49,7 @@ class Person:
                 random_value = np.random.uniform(0, 1)
                 if random_value < acceptance_probability:
                     self.infected = True
-                    print(f"Person has been infected with probability {acceptance_probability} and {total_collisions} collisions")
+                    #print(f"Person has been infected with probability {acceptance_probability} and {total_collisions} collisions")
                     
                 
             
@@ -61,8 +61,8 @@ class Person:
         
 # Define healthcare worker class (which inherits from Person)
 class Worker(Person):
-    def __init__(self, patient_list, ward, position=np.array([0.0,0.0]), step_length=0.1, masked_airborne_reduction_spread=0.5, masked_airborne_reduction_particles=0.5):
-        super().__init__(position, masked_airborne_reduction_spread=masked_airborne_reduction_spread, masked_airborne_reduction_particles=masked_airborne_reduction_particles)
+    def __init__(self, patient_list, ward, position=np.array([0.0,0.0]), step_length=0.1):
+        super().__init__(position)
         self.type = "worker"
         self.patient_list = patient_list
         shuffle(self.patient_list)
@@ -260,8 +260,8 @@ class Worker(Person):
         
 # Define patient class (which inherits from Person)
 class Patient(Person):
-    def __init__(self, position=np.array([0.0,0.0]), masked_airborne_reduction_spread=0.5, masked_airborne_reduction_particles=0.5):
-        super().__init__(position, masked_airborne_reduction_spread=masked_airborne_reduction_spread, masked_airborne_reduction_particles=masked_airborne_reduction_particles)
+    def __init__(self, position=np.array([0.0,0.0])):
+        super().__init__(position)
         self.type = "patient"
     
     def update(self, frame, airborne_particles, surface_particles, ward):

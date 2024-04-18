@@ -11,7 +11,7 @@ surface_half_life = 7
 airborne_spread = 3.95
 surface_spread = 0.8
 airborne_mean_particles = 8
-surface_mean_particles = 2  # MAKE IT SO 20% OF PARTICLES ARE ON SURFACE, OTHER 80% ARE AIRBORNE, MEAN PARTICLES = 10 IN TOTAL
+surface_mean_particles = 2 
 
 masked_airborne_reduction_spread = 0.25 # Reduction in airborne spread if wearing a mask
 masked_airborne_reduction_particles = (1 - 0.6) # Reduction in airborne particles if wearing a mask
