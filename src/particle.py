@@ -54,8 +54,9 @@ class ParticleManager:
     # Update the particles, checking for decay
     def update(self, timestep):
         # Pop particles that have decayed
-        while self.particles.queue[0][1] <= timestep:
-            self.particles.pop()
+        if len(self.particles.queue) > 0:
+            while self.particles.queue[0][1] <= timestep:
+                self.particles.pop()
             
     # Render the particles
     def render(self, ax, color='red'):
@@ -120,15 +121,15 @@ class PriorityQueue:
         self.queue = self.queue[1:]
     
 def main():
-    # Create a particle manager
-    particle_manager = ParticleManager()
-    
     # Create some particles
     origin = np.array([0.0, 0.0])
     spread = 1
     half_life = 5
     
-    particle_manager.create_particles(1000, 0, origin, spread, half_life)
+    # Create a particle manager
+    particle_manager = ParticleManager(half_life, spread, 1)
+    
+    particle_manager.create_particles(1000, origin)
     
     # Print initial particles
     print("Particles created:")
@@ -158,5 +159,39 @@ def main():
     print(f"{len(particle_manager.particles.queue)} particles remaining after update:")
     print(particle_manager.particles.queue)
     
+    
+    
+def test_priority_queue():
+    pq = PriorityQueue()
+
+    # Test pushing items onto the queue
+    pq.push('item1', 1)
+    assert (pq.queue[0] == np.array(['item1', 1])).all()
+
+    pq.push('item2', 2)
+    assert (pq.queue[0] == np.array(['item1', 1])).all()
+    assert (pq.queue[1] == np.array(['item2', 2])).all()
+
+    pq.push('item3', 0)
+    assert (pq.queue[0] == np.array(['item3', 0])).all()
+    assert (pq.queue[1] == np.array(['item1', 1])).all()
+    assert (pq.queue[2] == np.array(['item2', 2])).all()
+
+    # Test popping items from the queue
+    pq.pop()
+    assert (pq.queue[0] == np.array(['item1', 1])).all()
+    assert (pq.queue[1] == np.array(['item2', 2])).all()
+
+    pq.pop()
+    assert (pq.queue[0] == np.array(['item2', 2])).all()
+
+    pq.pop()
+    assert pq.queue.size == 0
+
+test_priority_queue()
+
+
+
 if __name__ == "__main__":
-    main()
+    #main()
+    test_priority_queue()
