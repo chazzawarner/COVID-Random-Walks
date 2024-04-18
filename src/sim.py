@@ -85,22 +85,20 @@ class Simulation:
             airborne_render = self.airborne_particles.render(ax, color='yellow')
             surface_render = self.surface_particles.render(ax, color='orange')
             
+            # Render the masks
+            for worker in self.workers:
+                if worker.masked:
+                    ax.add_patch(plt.Circle(worker.position, 1, facecolor='blue', linewidth=3, zorder=8))
+            
             # Add time step text outside of the plot
             timestep_text = ax.text(0.02, 0.95, '', transform=fig.transFigure)
+            
+            # Add infection count text outside of the plot
+            infection_text = ax.text(0.02, 0.90, '', transform=fig.transFigure)
         
         # Run the simulation until the maximum number of timesteps is reached or everyone is infected
         #for timestep in range(self.max_timesteps):
         def update(timestep):
-            # Create particles from the infected patients
-            for patient in self.patients:
-                if patient.infected:
-                    self.airborne_particles.create_particles(timestep, patient.position)
-                    self.surface_particles.create_particles(timestep, patient.position)
-                    
-            # Update the particles
-            self.airborne_particles.update(timestep)
-            self.surface_particles.update(timestep)
-            
             # Update the workers
             for worker in self.workers:
                 worker.update(timestep, self.airborne_particles, self.surface_particles, self.ward)
@@ -109,6 +107,11 @@ class Simulation:
             for patient in self.patients:
                 patient.update(timestep, self.airborne_particles, self.surface_particles, self.ward)
                 
+            # Update the particles
+            self.airborne_particles.update(timestep)
+            self.surface_particles.update(timestep)
+            
+                
             # Check if everyone is infected
             self.total_infected = sum([1 for patient in self.patients if patient.infected]) + sum([1 for worker in self.workers if worker.infected])
             
@@ -116,18 +119,24 @@ class Simulation:
                 print(f"Everyone is infected at timestep {timestep}")
                 return
             
+            
             # Update the plot
             if render:
                 # Update the time step text
                 timestep_text.set_text(f'Time step: {timestep}/{self.max_timesteps}')
+                
+                # Update the infection count text
+                infection_text.set_text(f'Infected: {self.total_infected}/{self.total_people} ({sum([1 for patient in self.patients if patient.infected])} patients, {sum([1 for worker in self.workers if worker.infected])} workers)')
                 
                 # Update the workers
                 for worker_render in worker_renders:
                     worker_render.set_center((self.workers[worker_renders.index(worker_render)].position[0], self.workers[worker_renders.index(worker_render)].position[1]))
                     
                 # Update the particles
-                airborne_render.set_offsets([p[0].position for p in self.airborne_particles.particles.queue])
-                surface_render.set_offsets([p[0].position for p in self.surface_particles.particles.queue])
+                if len(self.airborne_particles.particles.queue) > 0:
+                    airborne_render.set_offsets([p[0].position for p in self.airborne_particles.particles.queue])
+                if len(self.surface_particles.particles.queue) > 0:
+                    surface_render.set_offsets([p[0].position for p in self.surface_particles.particles.queue])
                 
         if render:
             ani = animation.FuncAnimation(fig, update, frames=self.max_timesteps, blit=False)
@@ -139,7 +148,7 @@ class Simulation:
                 
         
 def main():
-    sim = Simulation()
+    sim = Simulation(masked=True)
     sim.run(render=True)
     
 if __name__ == "__main__":

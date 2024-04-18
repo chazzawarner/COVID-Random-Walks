@@ -79,10 +79,9 @@ class Worker(Person):
         self.target = [p for p in self.path if p.type != "room"][0]
         
     def render(self, ax):
-        facecolor = 'lightblue'
-        edgecolor = 'blue' if self.masked else facecolor
-        hatch = '+++' if self.vaccinated else None
-        circle = Circle((self.position[0], self.position[1]), 0.5, facecolor=facecolor, edgecolor=edgecolor, hatch=hatch, zorder=10)
+        facecolor = 'cyan'
+        edgecolor = 'green' if self.vaccinated else facecolor
+        circle = Circle((self.position[0], self.position[1]), 0.5, facecolor=facecolor, edgecolor=edgecolor, zorder=10)
         return ax.add_patch(circle)
         
     # Move the worker towards the patient
