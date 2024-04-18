@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from tqdm import tqdm
 from ward import Ward
 from person import Patient, Worker
 from particle import ParticleManager
@@ -82,13 +83,17 @@ class Simulation:
                 patient.render(ax)
             
             # Render the particles
-            airborne_render = self.airborne_particles.render(ax, color='yellow')
-            surface_render = self.surface_particles.render(ax, color='orange')
+            airborne_render = self.airborne_particles.render(ax, color='hotpink')
+            surface_render = self.surface_particles.render(ax, color='purple')
             
             # Render the masks
             for worker in self.workers:
                 if worker.masked:
-                    ax.add_patch(plt.Circle(worker.position, 1, facecolor='blue', linewidth=3, zorder=8))
+                    ax.add_patch(plt.Circle(worker.position, 0.6, facecolor='blue', zorder=8))
+                    
+            for patient in self.patients:
+                if patient.masked:
+                    ax.add_patch(plt.Circle(patient.position, 0.6, facecolor='blue', zorder=8))
             
             # Add time step text outside of the plot
             timestep_text = ax.text(0.02, 0.95, '', transform=fig.transFigure)
@@ -97,7 +102,6 @@ class Simulation:
             infection_text = ax.text(0.02, 0.90, '', transform=fig.transFigure)
         
         # Run the simulation until the maximum number of timesteps is reached or everyone is infected
-        #for timestep in range(self.max_timesteps):
         def update(timestep):
             # Update the workers
             for worker in self.workers:
@@ -117,7 +121,7 @@ class Simulation:
             
             if self.total_infected == self.total_people:
                 print(f"Everyone is infected at timestep {timestep}")
-                return
+                return False
             
             
             # Update the plot
@@ -133,22 +137,24 @@ class Simulation:
                     worker_render.set_center((self.workers[worker_renders.index(worker_render)].position[0], self.workers[worker_renders.index(worker_render)].position[1]))
                     
                 # Update the particles
-                if len(self.airborne_particles.particles.queue) > 0:
-                    airborne_render.set_offsets([p[0].position for p in self.airborne_particles.particles.queue])
-                if len(self.surface_particles.particles.queue) > 0:
-                    surface_render.set_offsets([p[0].position for p in self.surface_particles.particles.queue])
+                if len(self.airborne_particles.particles.items) > 0:
+                    airborne_render.set_offsets([p.position for p in self.airborne_particles.particles.items])
+                if len(self.surface_particles.particles.items) > 0:
+                    surface_render.set_offsets([p.position for p in self.surface_particles.particles.items])
                 
         if render:
             ani = animation.FuncAnimation(fig, update, frames=self.max_timesteps, blit=False)
             plt.show()
             
         else: # Run headless
-            for timestep in range(self.max_timesteps):
+            for timestep in tqdm(range(self.max_timesteps)):
                 update(timestep)
+                if self.total_infected == self.total_people:
+                    break
                 
         
 def main():
-    sim = Simulation(masked=True)
+    sim = Simulation(masked=False)
     sim.run(render=True)
     
 if __name__ == "__main__":
