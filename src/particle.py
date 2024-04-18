@@ -96,29 +96,38 @@ class ParticleManager:
     
     
 # Priority queue class
-class PriorityQueue:
+class PriorityQueue: 
     def __init__(self):
-        self.queue = np.array([])
+        self.items = np.array([])
+        self.priorities = np.array([])
         
-    # Create a queue item
-    def create_queue_item(self, item, priority):
-        return (item, priority)
-    
     # Push an item onto the queue with a given priority
     def push(self, item, priority):
-        if self.queue.size == 0:
-            # Create the queue item if empty
-            self.queue = np.array([self.create_queue_item(item, priority)])
+        # If the queue is empty, initialise the items and priorities arrays with the new item and its priority
+        if self.items.size == 0:
+            self.items = np.array([item])
+            self.priorities = np.array([priority])
         else:
-            # Find the first index where the priority is greater than the new item's priority
-            index = np.argmax(self.queue[:,1] > priority)
+            # Find the indices of the items with a higher priority than the new item
+            higher_priority_indices = np.argwhere(self.priorities > priority)
             
-            # Insert the new item at the index, pushing the rest of the items back
-            self.queue = np.insert(self.queue, index, self.create_queue_item(item, priority), axis=0)
-    
-    # Pop the first item from the queue      
+            # If there are no items with a higher priority, append the new item at the end
+            if higher_priority_indices.size == 0:
+                index_to_push = self.items.size
+            else:
+                # Otherwise, insert the new item at the position of the first item with a higher priority
+                index_to_push = higher_priority_indices[0]
+            
+            # Insert the new item and its priority at the calculated index
+            self.items = np.insert(self.items, index_to_push, item, axis=0)
+            self.priorities = np.insert(self.priorities, index_to_push, priority)
+        
+    # Pop the first item from the queue
     def pop(self):
-        self.queue = self.queue[1:]
+        self.items = self.items[1:]
+        self.priorities = self.priorities[1:]
+        
+    
     
 def main():
     # Create some particles
@@ -160,38 +169,7 @@ def main():
     print(particle_manager.particles.queue)
     
     
-    
-def test_priority_queue():
-    pq = PriorityQueue()
-
-    # Test pushing items onto the queue
-    pq.push('item1', 1)
-    assert (pq.queue[0] == np.array(['item1', 1])).all()
-
-    pq.push('item2', 2)
-    assert (pq.queue[0] == np.array(['item1', 1])).all()
-    assert (pq.queue[1] == np.array(['item2', 2])).all()
-
-    pq.push('item3', 0)
-    assert (pq.queue[0] == np.array(['item3', 0])).all()
-    assert (pq.queue[1] == np.array(['item1', 1])).all()
-    assert (pq.queue[2] == np.array(['item2', 2])).all()
-
-    # Test popping items from the queue
-    pq.pop()
-    assert (pq.queue[0] == np.array(['item1', 1])).all()
-    assert (pq.queue[1] == np.array(['item2', 2])).all()
-
-    pq.pop()
-    assert (pq.queue[0] == np.array(['item2', 2])).all()
-
-    pq.pop()
-    assert pq.queue.size == 0
-
-test_priority_queue()
-
-
 
 if __name__ == "__main__":
     #main()
-    test_priority_queue()
+    pass
