@@ -20,6 +20,10 @@ class Person:
         
         self.masked_airborne_reduction_spread = 0.25
         self.masked_airborne_reduction_particles = (1 - 0.6)
+        
+        # Set ID for person (random hex string)
+        self.id = np.random.bytes(4).hex()
+        
     
     def update(self, frame, airborne_particles, surface_particles, ward):
         # Check if the person has been infected, if so create new particles
@@ -271,7 +275,8 @@ class Patient(Person):
         facecolor = 'lightcoral'
         edgecolor = 'green' if self.vaccinated else facecolor
         if self.vaccinated:
-            print(f"Patient vaccinated: {self.vaccinated}")
+            #print(f"Patient vaccinated: {self.vaccinated}")
+            pass
         circle = Circle((self.position[0], self.position[1]), 0.5, facecolor=facecolor, edgecolor=edgecolor, zorder=9)
         ax.add_patch(circle)
         

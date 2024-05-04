@@ -62,6 +62,16 @@ class Simulation:
         # Set the total number of people and infected people
         self.total_people = len(self.patients) + len(self.workers)
         self.total_infected = initial_infected
+        
+        # Initalise record of infected people
+        self.infection_record = []
+        for patient in self.patients:
+            if patient.infected:
+                self.infection_record.append({
+                    "type": "patient",
+                    "id": patient.id,
+                    "timestep": 0
+                })
     
         
     def run(self, render=False):  
@@ -115,14 +125,29 @@ class Simulation:
             self.airborne_particles.update(timestep)
             self.surface_particles.update(timestep)
             
-                
+            # Add to the infection record
+            for patient in self.patients:
+                if patient.infected and not any([record["id"] == patient.id for record in self.infection_record]):
+                    self.infection_record.append({
+                        "type": "patient",
+                        "id": patient.id,
+                        "timestep": timestep
+                    })
+                    
+            for worker in self.workers:
+                if worker.infected and not any([record["id"] == worker.id for record in self.infection_record]):
+                    self.infection_record.append({
+                        "type": "worker",
+                        "id": worker.id,
+                        "timestep": timestep
+                    })
+                    
             # Check if everyone is infected
             self.total_infected = sum([1 for patient in self.patients if patient.infected]) + sum([1 for worker in self.workers if worker.infected])
             
             if self.total_infected == self.total_people:
                 print(f"Everyone is infected at timestep {timestep}")
                 return False
-            
             
             # Update the plot
             if render:
@@ -150,6 +175,8 @@ class Simulation:
             for timestep in tqdm(range(self.max_timesteps)):
                 update(timestep)
                 if self.total_infected == self.total_people:
+                    #print(f"Infection record: {self.infection_record}")
+                    #print(len(self.infection_record))
                     break
                 
         
